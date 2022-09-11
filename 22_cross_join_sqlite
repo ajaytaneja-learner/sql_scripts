@@ -1,0 +1,161 @@
+-- Cross Join is a very useful concept. We will have this session into 3 parts
+-- 1) Firstly, what is a cross join?
+-- 2) We will see 2 use acses for cross join. Thse being:
+-- a) Prepare master data
+-- b) Preparing large number of rows for performance testing. This is very important for generating millions of data and test. 
+--   How cross join can be used to generate millions of data?
+
+
+-- What is a cross join?
+-- 1) We create two tables: products and colours
+-- 2) then we say select and do not give a join conbdition for both tables
+-- 3) Then, there will be all possible permutations created with each record table 1 "joining" with every record of table 2
+-- 4) This is shown below
+
+-- First uase case demonstration
+
+-- 5) We then have sizes table and transactions table
+-- 6) From the transactions table we have the sales of each product groupd by colour and size
+-- 7) This is shown below.
+-- 8) However, this may not be enough
+-- 9) The store manager miht want to see all possible permutations. That is if something is not sold, the store manager wants zero against it
+-- 10) Since its not there in transactions table, the group by clause does no show it 0
+-- 11) We need all permutations and thus cross join
+-- 12) We have prodcusts table, colours table, sizes, transactions table as shown
+-- 13) Lets first get all the permutations from products, colours and sizes
+-- 14) This is shown below
+-- 15) We then use a cte and create 2 tabls master_data and sales
+-- 16) We then LEFT JOIN master_data and sales table
+-- 17a) The idea of a cte (common table xpression) is that the table is created at run time
+-- 17b) Next, remove the NULL values
+
+-- Second use case demonstration
+
+-- 18) Let us say we want to a performance tsting on our query
+-- 19) We want to genereate millions if ecords
+-- 20) And do a performance testing
+-- 21) Seelct any database table from your database which has more records
+-- 22) And then cross join with it
+
+
+
+
+CREATE TABLE products(
+id INT,
+name VARCHAR(20)
+);
+
+INSERT INTO products
+VALUES (1, 'A');
+
+INSERT INTO products
+VALUES (2, 'B');
+
+INSERT INTO products
+VALUES (3, 'C');
+
+INSERT INTO products
+VALUES (4, 'D');
+
+INSERT INTO products
+VALUES (5, 'E');
+
+SELECT * FROM products;
+
+CREATE TABLE colours(
+colour_id INT,
+color VARCHAR(20)
+);
+
+INSERT INTO colours
+VALUES (1, 'Blue');
+
+INSERT INTO colours
+VALUES (2, 'Green');
+
+INSERT INTO colours
+VALUES (3, 'Orange');
+
+SELECT * FROM colours;
+
+-- Next see how cross join results in creation of joining of the 2 tables with all possible permutations
+
+SELECT prod.*, col.* 
+FROM products AS prod, colours AS col;
+
+-- How this is useful??
+--Lets create 2 mor tabls in order to see the master data use case
+
+CREATE TABLE sizes(
+size_id INT,
+size VARCHAR(20)
+);
+
+INSERT INTO sizes
+VALUES (1, 'M');
+
+INSERT INTO sizes
+VALUES (2, 'L');
+
+INSERT INTO sizes
+VALUES (3, 'XL');
+
+SELECT * FROM sizes;
+
+
+
+CREATE TABLE transactions(
+order_id INT,
+product_name VARCHAR(20),
+colour VARCHAR(20),
+size VARCHAR(20),
+amount INT
+);
+
+DROP TABLE transactions;
+
+INSERT INTO transactions
+VALUES (1, 'A', 'Blue', 'L', 300);
+
+INSERT INTO transactions
+VALUES (2, 'B', 'Blue', 'XL', 150);
+
+INSERT INTO transactions
+VALUES (2, 'B', 'Blue', 'XL', 150);
+
+INSERT INTO transactions
+VALUES (3, 'B', 'Green', 'L', 250);
+
+INSERT INTO transactions
+VALUES (4, 'C', 'Blue', 'L', 250);
+
+INSERT INTO transactions
+VALUES (5, 'E', 'Green', 'L', 270);
+
+INSERT INTO transactions
+VALUES (6, 'D', 'Orange', 'L', 200);
+
+INSERT INTO transactions
+VALUES (7, 'D', 'Green', 'M', 250);
+
+SELECT * FROM transactions;
+
+SELECT product_name, colour, size, sum(amount)  FROM transactions -- Point number 7 in the explanatory notes
+GROUP BY product_name, colour, size; -- Point number 7 in the explanatory notes
+
+
+SELECT prod_name.name AS poduct_name, item_col.color AS item_colour , item_size.size AS item_size -- Point numbers 13 and 14 in the explanaory notes above
+FROM products AS prod_name, colours AS item_col, sizes AS item_size; -- Point numbers 13 and 14 in he explanaory notes above
+
+with master_data AS -- Point numbers 15, 16 and 17 of the explanatory notes above                                                 
+(SELECT prod_name.name AS product_name, item_col.color AS item_colour , item_size.size AS item_size  -- Point numbers 15, 16 and 17 of the explanatory notes above 
+FROM products AS prod_name, colours AS item_col, sizes AS item_size)   -- Point numbers 15, 16 and 17 of the explanatory notes above 
+,sales AS (SELECT product_name, colour, size, sum(amount) AS total_amount FROM transactions  -- Point numbers 15, 16 and 17 of the explanatory notes above 
+GROUP BY product_name, colour, size)  -- Point numbers 15, 16 and 17 of the explanatory notes above 
+
+SELECT md.product_name, md.item_colour, md.item_size, ifNULL(sales. total_amount, 0)  -- Point numbers 15, 16 and 17 of the explanatory notes above 
+FROM master_data AS md -- Point numbers 15, 16 and 17 of the explanatory notes above 
+LEFT JOIN sales ON md.product_name = sales.product_name and md.item_colour = sales.colour and md.item_size = sales.size  -- Point numbers 15, 16 and 17 of the explanatory notes above 
+order by total_amount
+
+
